@@ -128,9 +128,10 @@ function Show-Menu {
     Write-Host "========= MENU LOCALSTACK ==========" -ForegroundColor Cyan
     Write-Host "============= by Zamma =============" -ForegroundColor Cyan
     Write-Host "1. Crear una cola" -ForegroundColor White
-    Write-Host "2. Enviar un mensaje a una cola" -ForegroundColor White
-    Write-Host "3. Listar colas existentes" -ForegroundColor White
-    Write-Host "4. Salir" -ForegroundColor White
+    Write-Host "2. Crear secuencia de colas" -ForegroundColor White
+    Write-Host "3. Enviar un mensaje a una cola" -ForegroundColor White
+    Write-Host "4. Listar colas existentes" -ForegroundColor White
+    Write-Host "5. Salir" -ForegroundColor White
     Write-Host "====================================" -ForegroundColor Cyan
     Write-Host ""
 }
@@ -179,6 +180,93 @@ function New-SQSQueue {
             Write-Host "Error creando cola Standard: $($_.Exception.Message)" -ForegroundColor Red
         }
     }
+}
+
+# Funcion para crear secuencia de colas
+function New-SQSQueueSequence {
+    Write-Host ""
+    Write-Host "=== CREAR SECUENCIA DE COLAS ===" -ForegroundColor Yellow
+
+    $quantity = Read-Host "Ingresa la cantidad de colas a crear"
+
+    if ([string]::IsNullOrWhiteSpace($quantity)) {
+        Write-Host "La cantidad no puede estar vacia" -ForegroundColor Red
+        return
+    }
+
+    try {
+        $queueCount = [int]$quantity
+        if ($queueCount -lt 1 -or $queueCount -gt 100) {
+            Write-Host "La cantidad debe estar entre 1 y 100" -ForegroundColor Red
+            return
+        }
+    }
+    catch {
+        Write-Host "Cantidad invalida. Debe ser un numero entero." -ForegroundColor Red
+        return
+    }
+
+    $baseName = Read-Host "Ingresa el nombre base de las colas"
+
+    if ([string]::IsNullOrWhiteSpace($baseName)) {
+        Write-Host "El nombre base no puede estar vacio" -ForegroundColor Red
+        return
+    }
+
+    $isFifo = Read-Host "Son colas FIFO? (s/n) [n]"
+
+    $queueType = "Standard"
+    $fifoSuffix = ""
+    $fifoAttributes = ""
+
+    if ($isFifo -eq "s" -or $isFifo -eq "S") {
+        $queueType = "FIFO"
+        $fifoSuffix = ".fifo"
+        $fifoAttributes = "--attributes FifoQueue=true"
+    }
+
+    Write-Host ""
+    Write-Host "Creando $queueCount colas de tipo $queueType..." -ForegroundColor Cyan
+    Write-Host ""
+
+    $successCount = 0
+    $failCount = 0
+
+    for ($i = 0; $i -lt $queueCount; $i++) {
+        if ($i -eq 0) {
+            $queueName = "$baseName$fifoSuffix"
+        }
+        else {
+            $queueName = "$baseName$i$fifoSuffix"
+        }
+
+        try {
+            if ($queueType -eq "FIFO") {
+                $result = awslocal sqs create-queue --queue-name $queueName --attributes FifoQueue=true --region us-east-1 --profile localstack | ConvertFrom-Json
+            }
+            else {
+                $result = awslocal sqs create-queue --queue-name $queueName --region us-east-1 --profile localstack | ConvertFrom-Json
+            }
+
+            $queueUrl = $result.QueueUrl
+            $Global:CreatedQueues += @{Name = $queueName; Url = $queueUrl; Type = $queueType}
+
+            Write-Host "[$($i + 1)/$queueCount] Cola creada: $queueName" -ForegroundColor Green
+            $successCount++
+        }
+        catch {
+            Write-Host "[$($i + 1)/$queueCount] Error creando cola $queueName : $($_.Exception.Message)" -ForegroundColor Red
+            $failCount++
+        }
+    }
+
+    Write-Host ""
+    Write-Host "=== RESUMEN ===" -ForegroundColor Cyan
+    Write-Host "Colas creadas exitosamente: $successCount" -ForegroundColor Green
+    if ($failCount -gt 0) {
+        Write-Host "Colas con error: $failCount" -ForegroundColor Red
+    }
+    Write-Host "Total en el sistema: $($Global:CreatedQueues.Count)" -ForegroundColor White
 }
 
 # Funcion para enviar mensaje
@@ -367,29 +455,30 @@ function Cleanup-LocalStack {
 # Loop principal del menu
 do {
     Show-Menu
-    $choice = Read-Host "Selecciona una opcion (1-4)"
-    
+    $choice = Read-Host "Selecciona una opcion (1-5)"
+
     switch ($choice) {
         "1" { New-SQSQueue }
-        "2" { Send-SQSMessage }
-        "3" { Show-ExistingQueues }
-        "4" { 
+        "2" { New-SQSQueueSequence }
+        "3" { Send-SQSMessage }
+        "4" { Show-ExistingQueues }
+        "5" {
             Write-Host "Saliendo..." -ForegroundColor Yellow
             Cleanup-LocalStack
-            break 
+            break
         }
-        default { 
-            Write-Host "Opcion invalida. Por favor selecciona 1, 2, 3 o 4." -ForegroundColor Red 
+        default {
+            Write-Host "Opcion invalida. Por favor selecciona 1, 2, 3, 4 o 5." -ForegroundColor Red
         }
     }
-    
-    if ($choice -ne "4") {
+
+    if ($choice -ne "5") {
         Write-Host ""
         Write-Host "Presiona cualquier tecla para continuar..." -ForegroundColor Gray
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     }
-    
-} while ($choice -ne "4")
+
+} while ($choice -ne "5")
 
 Write-Host ""
 Write-Host "LocalStack ha sido detenido. Gracias por usar el script!" -ForegroundColor Green

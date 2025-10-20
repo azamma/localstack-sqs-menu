@@ -16,6 +16,7 @@ This PowerShell script provides an interactive menu for testing AWS SQS (Simple 
 
 - 🚀 Automated Docker container management
 - 📋 Menu-driven interface for SQS operations
+- 🔢 Bulk queue creation with sequence feature
 - 🔍 Connection health checks with retry logic
 - ✅ JSON message validation before sending
 - 🧪 Automatic message verification after sending
@@ -90,9 +91,10 @@ Once started, you'll see the following menu:
 ========= MENU LOCALSTACK ==========
 ============= by Zamma =============
 1. Crear una cola
-2. Enviar un mensaje a una cola
-3. Listar colas existentes
-4. Salir
+2. Crear secuencia de colas
+3. Enviar un mensaje a una cola
+4. Listar colas existentes
+5. Salir
 ====================================
 ```
 
@@ -117,7 +119,42 @@ Cola Standard creada exitosamente:
   URL: http://localhost:4566/000000000000/my-test-queue
 ```
 
-#### 2. Send a Message (Enviar un mensaje a una cola)
+#### 2. Create Queue Sequence (Crear secuencia de colas)
+
+Creates multiple SQS queues at once with automatic naming:
+
+1. Enter the number of queues to create (1-100)
+2. Enter the base name for the queues
+3. Choose queue type (Standard or FIFO)
+
+The queues will be named: `basename`, `basename1`, `basename2`, ..., `basenameN`
+
+**Example:**
+```
+Ingresa la cantidad de colas a crear: 5
+Ingresa el nombre base de las colas: test-queue
+Son colas FIFO? (s/n) [n]: n
+
+Creando 5 colas de tipo Standard...
+
+[1/5] Cola creada: test-queue
+[2/5] Cola creada: test-queue1
+[3/5] Cola creada: test-queue2
+[4/5] Cola creada: test-queue3
+[5/5] Cola creada: test-queue4
+
+=== RESUMEN ===
+Colas creadas exitosamente: 5
+Total en el sistema: 5
+```
+
+**Use Cases:**
+- 🔄 **Load testing:** Create multiple queues quickly for testing
+- 🧪 **Batch testing:** Test message distribution across queues
+- 📊 **Performance testing:** Simulate multiple queue scenarios
+- 🎯 **Development:** Quickly set up test environments
+
+#### 3. Send a Message (Enviar un mensaje a una cola)
 
 Sends a JSON message to a selected queue:
 
@@ -145,7 +182,7 @@ Mensaje recibido en la cola:
 El mensaje recibido coincide con el enviado
 ```
 
-#### 3. List Queues (Listar colas existentes)
+#### 4. List Queues (Listar colas existentes)
 
 Displays:
 - Queues created in the current session
@@ -163,7 +200,7 @@ Todas las colas en LocalStack:
     http://localhost:4566/000000000000/my-test-queue
 ```
 
-#### 4. Exit (Salir)
+#### 5. Exit (Salir)
 
 Performs cleanup:
 - Deletes all queues created in the session
